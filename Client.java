@@ -206,6 +206,7 @@ public class Client {
         }
     }
 
+
     /**
      * receive() - Continuously runs in a separate thread to listen for data
      * from the server. Handles both Message objects and ACK/NAK strings.
@@ -256,6 +257,9 @@ public class Client {
      * @param args Command-line arguments: host, port, clientName
      */
     public static void main(String[] args) {
+        SRTClient srtClient = new SRTClient();
+        srtClient.startOverlay();
+
 //        String host = "localhost";
 //        int port = 59090;
 //        String clientName1 = "client1";

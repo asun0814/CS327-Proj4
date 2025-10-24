@@ -27,14 +27,12 @@ public class TransportControlBlock {
 
     /**
      * TCB constructor
-     * Initialize a TCB for each connection
+     * Initialize a TCB for each connection, the initialized state is CLOSED
      */
     public TransportControlBlock() {
         stateServer = CLOSED;
 
     }
-
-
 
 
 }

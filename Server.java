@@ -239,7 +239,7 @@ public class Server{
         @Override
         public void run() {
             try {
-                Boolean clientConnectRunning = true;
+                boolean clientConnectRunning = true;
                 while (clientConnectRunning) {
                     // Receive message or ACK/NAK string from the input
                     Object received = input.readObject();
