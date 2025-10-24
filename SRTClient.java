@@ -54,8 +54,8 @@ public class SRTClient {
     /** Constructor for SRTClient class */
     public SRTClient(){
         maxTCBEntries = 5;
-        SYN_TIMEOUT = 100;
-        FIN_TIMEOUT = 100;
+        SYN_TIMEOUT = 10000;
+        FIN_TIMEOUT = 10000;
         SYN_MAX_RETRY = 5;
         FIN_MAX_RETRY = 5;
 
@@ -379,25 +379,4 @@ public class SRTClient {
     }
     }
 
-// * static variables
-// *      SYN TIMEOUT: the number of milliseconds to wait for SYNACK before retransmitting SYN = 100 milliseconds
-//        SYN MAX RETRY: the max number of SYN retransmissions in srt client connect() = 5
-//        FIN TIMEOUT: the number of milliseconds to wait for FINACK before retransmitting FIN = 100 milliseconds
-//        FIN MAX RETRY: the max number of FIN retransmissions in srt client disconnect() = 5
-//// *
 
-//// * main () {
-////        // call the startOverlay method , throw error if it returns -1
-////        // call the initSRTClient method , throw error if it returns -1
-////        // create a srt client sock on port 87 using the createSockSRTClient (87)
-////        and assign to socksr , throw error if it returns -1
-////        // connect to srt server at port 88 using connectSRTClient ( socksr ,88) ,
-////        throw error if it returns -1
-////        // for now , just use a Thread . sleep (10000) here
-////        // disconnect using disconnSRTClient ( socksr ), throw error if it returns -1
-////        // close using closeSRTClient ( socksr ), throw error if it returns -1
-////        Computer Networks 4 Prof. Prasad
-////        Programming project 2 Due Date: Mar 21, 2023 11:59pm
-////        // finally , call stopOverlay () , throw error if it returns -1
-////    }
-//// */

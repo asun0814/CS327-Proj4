@@ -256,17 +256,17 @@ public class Client {
      *
      * @param args Command-line arguments: host, port, clientName
      */
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
+        int socksr = 2;
         SRTClient srtClient = new SRTClient();
         srtClient.startOverlay();
+        srtClient.initSRTClient();
+        srtClient.createSockSRTClient(87);
+        srtClient.connectSRTClient(socksr, 88);
+        srtClient.disconnSRTClient(socksr);
+        srtClient.closeSRTClient(socksr);
+        srtClient.stopOverlay();
 
-//        String host = "localhost";
-//        int port = 59090;
-//        String clientName1 = "client1";
-//        String clientName2 = "client2";
-//
-//        Client client1 = new Client(host, port, clientName1);
-//        Client client2 = new Client(host, port, clientName2);
 
     }
 
