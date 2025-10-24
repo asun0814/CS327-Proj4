@@ -24,12 +24,13 @@ public class TransportControlBlock {
     public int portNumClient; //port number of client
     public int stateServer; //state of server
 
+
     /**
      * TCB constructor
      * Initialize a TCB for each connection
      */
     public TransportControlBlock() {
-
+        stateServer = CLOSED;
 
     }
 
