@@ -13,7 +13,7 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
-// attribute fields 
+// attribute fields
 // method calls
 
 public class Server{
@@ -32,20 +32,27 @@ public class Server{
     /** Flag to keep the server running; setting to false stops the server */
     private boolean running;
 
+    private SRTServer srtS;
+
+    int maxClients;
+
+
     /**
      * Constructor: Initializes the server on a specific port.
      *
      * @param newPort Port number for the server to listen on.
      * @throws IOException if the ServerSocket cannot be created.
      */
-    public Server(int newPort) throws IOException {
+    public Server(int newPort, int max) throws IOException {
         port = newPort;
-        serverSocket = new ServerSocket(newPort);       // create a the server's listening socket using the port number
+        // serverSocket = new ServerSocket(newPort);       // create a the server's listening socket using the port number
         clients = new ArrayList<>();                    // initialize client list
         clientCounter = 0;                              // start client IDs at 0
+        maxClients = max;
 
         running = true;                                 // set server running flag
         System.out.println("Server started on port " + port);
+
     }
 
     /**
@@ -78,66 +85,42 @@ public class Server{
             }
         }
     }
+/**
+ **
+ * startOverlay() - Create a direct TCP link between the client and the server
+ *
+ *
+ public int startOverlay(){
+ try{
+ srtS = new SRTServer(port, maxClients, serverSocket);
+ serverSocket = new ServerSocket(59090);
+ Socket s = serverSocket.accept();
 
-    /**
-     * startOverlay() - Create a direct TCP link between the client and the server
-     *
-     */
-    public void startOverlay(){
-        start();
-    }
+ start();
 
-    /**
-     * createSockSRTServer() - Create a server side socket
-     *
-     */
-    public void createSockSRTServer(){
-
-    }
-
-    /**
-     * acceptSRTServer() - Accept a connection request from the client, gets the TCBServer
-     * entry using the socksr and changes the state of the connection to LISTENING.
-     * It starts the ListenThread to wait for SYNs, and changes the state to CONNECTED
-     * on receiving the SYN segment
-     * @param sockfd     The socket ID used to find the TCB entry in the TCB table
-     */
-    public void acceptSRTServer(int sockfd){
-
-    }
-
-    /**
-     * closeSRTServer() - The server closes the socket, removes the TCB entry,
-     * obtained using socksr. It returns 1 if succeeded (i.e., was in the right state
-     * to complete a close) and -1 if fails (i.e., in the wrong state).
-     * @param socksr    The socket ID used to find the TCB entry in the TCB table
-     */
-    public void closeSRTServer(int socksr){
+ }catch(IOException e){
+ System.out.println("error in startOverlay");
+ return -1;
+ }
+ return 1;
+ }
 
 
-    }
+ **
+ * stopOverlay() - Stop the overlay before terminating their processes
+ *
+ *
+ public int stopOverlay(){
+ try{
+ serverSocket.close();
+ }catch(IOException e){
+ System.out.println("error in startOverlay");
+ return -1;
+ }
+ return 1;
+ }
 
-    /**
-     * The run() method handles incoming segments and
-     * cancels the thread on receiving SYNs and FINs. The thread must also start a CLOSE WAIT
-     * TIMEOUT timer on receiving FIN before changing state to CLOSED.
-     */
-    public class ListenThread extends Thread {
-
-    }
-
-
-
-
-
-
-    /**
-     * stopOverlay() - Stop the overlay before terminating their processes
-     *
-     */
-    public void stopOverlay(){
-
-    }
+ */
 
 
     /**
@@ -239,7 +222,7 @@ public class Server{
         @Override
         public void run() {
             try {
-                boolean clientConnectRunning = true;
+                Boolean clientConnectRunning = true;
                 while (clientConnectRunning) {
                     // Receive message or ACK/NAK string from the input
                     Object received = input.readObject();
@@ -311,22 +294,6 @@ public class Server{
             }
         }
 
-        /**
-         * Sends either an ACK (success) or NAK (failure) string
-         * to the client to acknowledge a message or event.
-         * NOTE: currently not used
-         *
-         * @param ack true = send "ACK", false = send "NAK".
-         */
-        public void sendAckNak(boolean ack) {
-            try {
-                // Create a new string("ACK" or "NAK") depending on the boolean parameter input
-                output.writeObject(ack ? "ACK" : "NAK");
-                output.flush();                             //send
-            } catch (IOException e) {
-                System.err.println("ACK/NAK send failed: " + e.getMessage());
-            }
-        }
 
         /**
          * Closes this client’s input/output streams and socket.
@@ -356,25 +323,70 @@ public class Server{
      * @param args Command line arguments
      */
     public static void main(String[] args) {
+
+        /*main () {
+
+
+        // call the startOverlay method , throw error if it returns -1
+        // call the initSRTServer () method , throw error if it returns -1
+        // create a srt server sock at port 88 using the createSockSRTServer (88)
+        and assign to socksr , throw error if it returns -1
+        // connect to srt client using acceptSRTServer ( socksr ), throw error if it
+        returns -1
+        // for now , just use a Thread . sleep (10000) here
+        // disconnect using closeSRTServer ( sockfd ), throw error if it returns -1
+        // finally , call stopOverlay () , throw error if it returns -1
+    } */
+
         try {
-            // start server on port 59090
-            Server server = new Server(59090);
-            server.start();
+            Server server = new Server(59090, 5);
+
+            if(server.srtS.initSRTServer()==-1){
+                throw new Exception("innitSRTServer failed");
+            }
+
+            if(server.srtS.startOverlay()== -1){
+                throw new Exception("startOverlay failed");
+            }
+
+            int socksr = server.srtS.createSockSRTServer(88);
+            if(socksr == -1){
+                throw new Exception("createSockSRTServer failed");
+            }
+            if (server.srtS.acceptSRTServer(socksr) == -1){
+                throw new Exception("createSockSRTServer failed");
+            }
+
+            Thread.sleep(10000);
+            int sockfd = 1; //_______________________________________________FIX
+            if (server.srtS.closeSRTServer(sockfd) == -1){
+                throw new Exception("closeSRTServer failed");
+            }
+            if (server.srtS.stopOverlay() == -1){
+                throw new Exception("stopOverlay failed");
+            }
+
+
+            //FROM PROJ 1
+            //start server on port 59090
+            //Server server = new Server(59090);
+            //server.start();
 
             //Close all connected client sockets first
-            System.out.println("Closing client connections...");
-            for (ClientHandler handler : server.clients) {
-                handler.closeConnection();
-            }
-            System.out.println("All client connections closed.");
+            //System.out.println("Closing client connections...");
+            //for (ClientHandler handler : server.clients) {
+            //    handler.closeConnection();
+            //}
+            //System.out.println("All client connections closed.");
             // If the clienthandler list is empty, close all the server socket and stop the server
-            if (server.clients.isEmpty()){
-                server.serverSocket.close();
-                server.stopServer();
-            }
+            //if (server.clients.isEmpty()){
+            //    server.serverSocket.close();
+            //    server.stopServer();
+            //}
 
 
-        } catch (IOException e) {
+        } catch (Exception e ) {
             e.printStackTrace();
         }
-    }}
+    }
+}
