@@ -7,9 +7,7 @@
  * @start date: 10/13/2025
  */
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.*;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
@@ -25,7 +23,7 @@ public class SRTClient {
 
     /** A TCB table that stores the TCB objects, each TCB object holds connection-specific info like ports, node IDs,
      * and state */
-    private TransportControlBlock[] TCBTable;
+    private TCBClient[] TCBTable;
 
     /** Max amount of TCB Objects we could store in the TCB table, determine the length for the TCB array */
     private int maxTCBEntries;
@@ -33,11 +31,15 @@ public class SRTClient {
     /** Descriptor to access the matching socket */
     private int socketDescriptor;
 
-    /** Output stream to send segments to the server */
-    private ObjectOutputStream output;
-
-    /** Input stream to receive segments from the server */
-    private ObjectInputStream input;
+//    /** Output stream to send segments to the server */
+//    private ObjectOutputStream output;
+//
+//    /** Input stream to receive segments from the server */
+//    private ObjectInputStream input;
+    /** Output streams to send segments to the server */
+    private HashMap<Integer, ObjectInputStream> inputStreams = new HashMap<>();
+    /** Input streams to receive segments from the server */
+    private HashMap<Integer, ObjectOutputStream> outputStreams = new HashMap<>();
 
     /** The number of milliseconds to wait for SYNACK before retransmitting SYN, should be 100 milliseconds */
     private final int SYN_TIMEOUT;
@@ -79,15 +81,25 @@ public class SRTClient {
         try {
             // Connect to the server at given host:port
             Socket clientSocket = new Socket(ip, ServerPort);
+
             // Initialize input/output streams similar to the Client class
-            output = new ObjectOutputStream(clientSocket.getOutputStream());
-            input = new ObjectInputStream(clientSocket.getInputStream());
+            ObjectOutputStream output = new ObjectOutputStream(clientSocket.getOutputStream());
+            ObjectInputStream input = new ObjectInputStream(clientSocket.getInputStream());
             // Assign a socket ID to the clientSocket
             socketDescriptor++;
+            int socketID = socketDescriptor;
 
             // Store the socketDescriptor and the matching TCP connection in a hashmap
+            // In a similar way, store the input and output in two hashmaps along with the socket descriptor
             TCPConnections.put(socketDescriptor, clientSocket);
+            outputStreams.put(socketDescriptor, output);
+            inputStreams.put(socketDescriptor, input);
             System.err.println("TCP link created successfully, connected to server at " + ip + ":" + ServerPort);
+
+
+            // Starts the ListenThread thread to handle incoming segments
+            ListenThread listener = new ListenThread(socketID);
+            listener.start();
 
             return socketDescriptor;
 
@@ -105,14 +117,11 @@ public class SRTClient {
      */
     public void initSRTClient(){
         // Initializes the TCB table marking all entries NULL
-        TCBTable = new TransportControlBlock[maxTCBEntries];
+        TCBTable = new TCBClient[maxTCBEntries];
         for (int i = 0; i < TCBTable.length; i++) {
             TCBTable[i] = null;
         }
 
-        // Starts the ListenThread thread to handle incoming segments
-        ListenThread listener = new ListenThread();
-        listener.start();
     }
 
 
@@ -129,7 +138,7 @@ public class SRTClient {
         for (int i = 0; i < TCBTable.length; i++) {
             if (TCBTable[i] == null) {
                 // The state of the TCB instance has already been set to CLOSED in the TCB class
-                TCBTable[i] = new TransportControlBlock();
+                TCBTable[i] = new TCBClient();
                 // Set the client port to the call parameter client port
                 TCBTable[i].portNumClient = client_port;
                 // The TCB table entry index is the new socket ID to the client and be used to identify the
@@ -160,7 +169,7 @@ public class SRTClient {
         int retryCount = 0;
         try {
             // Find the matching TCB entry using the socket ID
-            TransportControlBlock tcb = TCBTable[socksr];
+            TCBClient tcb = TCBTable[socksr];
             // Handle boundary situation when TCB is null
             if (tcb == null) {
                 return -1;
@@ -169,11 +178,11 @@ public class SRTClient {
             tcb.portNumServer = server_port;
             // Create and send a SYN segment
             Segment seg1 = new Segment(Segment.SYN);
-            sendSegment(seg1);
+            sendSegment(socksr, seg1);
             System.out.println("[connectSRTClient] SYN segment sent to the server port :" + server_port);
 
-            // Change the status of the TCB object to LISTENING to wait for SYNACK
-            tcb.stateServer = TransportControlBlock.LISTENING;
+            // Change the status of the TCB object to SYNSENT to wait for SYNACK
+            tcb.stateClient = TCBClient.SYNSENT;
 
             // Retransmit SYN segment if SYNACK is not received
             while (retryCount < SYN_MAX_RETRY) {
@@ -181,7 +190,7 @@ public class SRTClient {
                     // Set the timer to 100 milliseconds by causing the current executing thread to sleep for the
                     // SYN_TIMEOUT amount of time, wait for the SYNACK response from the server
                     Thread.sleep(SYN_TIMEOUT);
-                    if (tcb.stateServer == TransportControlBlock.CONNECTED) {
+                    if (tcb.stateClient == TCBClient.CONNECTED) {
                         System.out.println("[connectSRTClient] Socket " + socksr + " connected to server port " + server_port);
                         // Return 1 when the SYNACK is received by the listenthread
                         return 1;
@@ -191,13 +200,13 @@ public class SRTClient {
                     return -1;
                 }
                 // SYNACK not received, retransmit SYN
-                sendSegment(seg1);
+                sendSegment(socksr, seg1);
                 retryCount++;
                 System.out.println("[connectSRTClient] SYNACK is not received, resend segment to the server port :"
                         + server_port + " for the " + retryCount + " times ");
             }
             // Exceeding the maximum retransmission number, close the TCB objects
-            tcb.stateServer = TransportControlBlock.CLOSED;
+            tcb.stateClient = TCBClient.CLOSED;
             System.err.println("[connectSRTClient] Connection failed after retries.");
             return -1;
         } catch (ArrayIndexOutOfBoundsException e) {
@@ -216,18 +225,18 @@ public class SRTClient {
         int retryCount = 0;
         try {
             // Find the matching TCB entry using the socket ID
-            TransportControlBlock tcb = TCBTable[socksr];
+            TCBClient tcb = TCBTable[socksr];
             // Handle boundary situation when TCB is null
             if (tcb == null) {
                 return -1;
             }
             // Create and send a FIN segment
             Segment seg1 = new Segment(Segment.FIN);
-            sendSegment(seg1);
+            sendSegment(socksr, seg1);
             System.out.println("[connectSRTClient] FIN segment sent to the server ");
 
-            // Change the status of the TCB object to CLOSEWAIT to wait for FINACK
-            tcb.stateServer = TransportControlBlock.CLOSEWAIT;
+            // Change the status of the TCB object to FINWAIT to wait for FINACK
+            tcb.stateClient = TCBClient.FINWAIT;
 
             // Retransmit FIN segment if FINACK is not received
             while (retryCount < FIN_MAX_RETRY) {
@@ -235,7 +244,7 @@ public class SRTClient {
                     // Set the timer to 100 milliseconds by causing the current executing thread to sleep for the
                     // SYN_TIMEOUT amount of time, wait for the SYNACK response from the server
                     Thread.sleep(FIN_TIMEOUT);
-                    if (tcb.stateServer == TransportControlBlock.CLOSED) {
+                    if (tcb.stateClient == TCBClient.CLOSED) {
                         System.out.println("[disconnSRTClient] Socket " + socksr + " has been disconnected from " +
                                 "the server ");
                         // Return 1 when the FINACK is received by the listenthread
@@ -246,13 +255,13 @@ public class SRTClient {
                     return -1;
                 }
                 // FINACK not received, retransmit FIN
-                sendSegment(seg1);
+                sendSegment(socksr, seg1);
                 retryCount++;
                 System.out.println("[disconnSRTClient] FINACK is not received, resend segment to the server port for the "
                         + retryCount + " times ");
             }
             // Exceeding the maximum retransmission number, close the TCB objects
-            tcb.stateServer = TransportControlBlock.CLOSED;
+            tcb.stateClient = TCBClient.CLOSED;
             System.err.println("[disconnSRTClient] Disconnection failed after retries, close the TCB object ");
             return -1;
         } catch (ArrayIndexOutOfBoundsException e) {
@@ -269,7 +278,7 @@ public class SRTClient {
     public int closeSRTClient(int socksr){
         try {
             // Find the matching TCB entry using the socket ID
-            TransportControlBlock tcb = TCBTable[socksr];
+            TCBClient tcb = TCBTable[socksr];
             // Handle boundary situation when selected TCB object is already null
             if (tcb == null) {
                 return -1;
@@ -307,10 +316,12 @@ public class SRTClient {
 
     /**
      * sendSegment() - Send a segment of particular type to the server
+     * @param socksr      The socket ID used to find the matching output stream
      * @param segment - send a segment object
      */
-    public void sendSegment(Segment segment){
+    public void sendSegment(int socksr, Segment segment){
         try {
+            ObjectOutputStream output = outputStreams.get(socksr);
             // Similar to other send methods, send the segment via the TCP sockets
             output.writeObject(segment);
             // Ouputstream sent the segment to the server
@@ -328,6 +339,25 @@ public class SRTClient {
     public class ListenThread extends Thread {
         // Boolean used to cancel the running thread safely when necessary
         private boolean running = true;
+        // Used to identify the specific TCB object in the table
+        private int socketID;
+        // Input and output streams for the ListenThread
+        private ObjectOutputStream output;
+        private ObjectInputStream input;
+        // Specific TCB object processed in the thread
+        private TCBClient tcb;
+
+        /**
+         * Constructor for ListenThread
+         *
+         */
+        public ListenThread(int socksr) {
+            socketID = socksr;
+            input = inputStreams.get(socketID);
+            output = outputStreams.get(socketID);
+            tcb = TCBTable[socksr];
+        }
+
         @Override
         public void run() {
             try {
@@ -339,15 +369,14 @@ public class SRTClient {
                     switch (seg.type) {
                         case Segment.SYN:
                             Segment seg1 = new Segment(Segment.SYNACK);
-                            sendSegment(seg1);
+                            sendSegment(socketID, seg1);
                             break;
 
                         case Segment.SYNACK:
-                            // Update the listening tcb object status to connected once the thread receives SYNACK
-                            for (TransportControlBlock tcb : TCBTable) {
-                                if (tcb.stateServer == TransportControlBlock.LISTENING) {
-                                    tcb.stateServer = TransportControlBlock.CONNECTED;
-                                }
+                            // Update the SYNSENT tcb object status to connected once the thread receives SYNACK
+                            // Revise it to be more specific
+                            if (tcb.stateClient == TCBClient.SYNSENT) {
+                                tcb.stateClient = TCBClient.CONNECTED;
                             }
                             // Then cancel the thread
                             System.out.println("[ListenThread] Client received SYNACK, canceling the thread ");
@@ -356,15 +385,13 @@ public class SRTClient {
 
                         case Segment.FIN:
                             Segment seg2 = new Segment(Segment.FINACK);
-                            sendSegment(seg2);
+                            sendSegment(socketID, seg2);
                             break;
 
                         case Segment.FINACK:
-                            // Update the listening tcb object status to connected once the thread receives SYNACK
-                            for (TransportControlBlock tcb : TCBTable) {
-                                if (tcb.stateServer == TransportControlBlock.CLOSEWAIT) {
-                                    tcb.stateServer = TransportControlBlock.CLOSED;
-                                }
+                            // Update the SYNSENT tcb object status to connected once the thread receives SYNACK
+                            if (tcb.stateClient == TCBClient.FINWAIT) {
+                                tcb.stateClient = TCBClient.CLOSED;
                             }
                             System.out.println("[ListenThread] Client received FINACK, canceling the thread ");
                             running = false;
