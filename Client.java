@@ -257,12 +257,15 @@ public class Client {
      * @param args Command-line arguments: host, port, clientName
      */
     public static void main(String[] args) throws IOException {
-        int socksr = 2;
+        int socksr = 0;
         SRTClient srtClient = new SRTClient();
-        srtClient.startOverlay();
         srtClient.initSRTClient();
+//        srtClient.startOverlay();
+        System.out.println("Overlay result: "+ srtClient.startOverlay());
+
         srtClient.createSockSRTClient(87);
-        srtClient.connectSRTClient(socksr, 88);
+//        srtClient.connectSRTClient(socksr, 88);
+        System.out.println("srtClient.connectSRTClient result: "+ srtClient.connectSRTClient(socksr, 88));
         srtClient.disconnSRTClient(socksr);
         srtClient.closeSRTClient(socksr);
         srtClient.stopOverlay();

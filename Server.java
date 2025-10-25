@@ -52,6 +52,8 @@ public class Server{
 
         running = true;                                 // set server running flag
         System.out.println("Server started on port " + port);
+        serverSocket = new ServerSocket(port);
+        srtS = new SRTServer(port, maxClients, serverSocket);
 
     }
 

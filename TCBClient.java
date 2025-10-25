@@ -30,6 +30,15 @@ public class TCBClient {
 
     }
 
+    public TCBClient(int serverNode, int serverPort, int clientNode, int clientPort, int state) {
+        nodeIDServer = serverNode;
+        portNumServer = serverPort;
+        nodeIDClient = clientNode;
+        portNumClient = clientPort;
+        stateClient = CLOSED;
+
+    }
+
 
 
 }

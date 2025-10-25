@@ -40,7 +40,7 @@ public class SRTServer {
      * @param portNumServer      Port number for the server to listen on.
      * @param size               Maximum number of client entries or sockegts in TCBtable and servSocks arrays respectively
      */
-    public SRTServer(int portNumServer, int size, ServerSocket sock){
+    public SRTServer(int portNumServer, int size, ServerSocket sock) {
         serverPort = portNumServer;
         IDCounter = 0;
         tableSize = size;
@@ -80,6 +80,7 @@ public class SRTServer {
      *
      */
     public int stopOverlay(){
+        System.out.println("stopping overlay");
         running = false;
         try{
             for(int i=0; i< servSocks.length; i++){
@@ -103,6 +104,7 @@ public class SRTServer {
      * @return            1 if sucessful, -1 if an error occurs
      */
     public int initSRTServer(){
+        System.out.println("innitiating SRT server");
         try{
             TCBtable = new TCBServer[tableSize];
             servSocks = new Socket[tableSize];
@@ -124,6 +126,7 @@ public class SRTServer {
      * @return            IDCounter, which is nodeIDServer of the created TCBServer entry. Returns -1 if an error occurs
      */
     public int createSockSRTServer(int serverPort){
+        System.out.println("creating SRT Socket");
         try{
             TCBServer newEntry = new TCBServer(IDCounter, serverPort, IDCounter, -1, TCBServer.CLOSED);   // create TCB for new client, no port number yet (-1)
 
@@ -153,6 +156,7 @@ public class SRTServer {
      * @return              1 if sucessful, -1 if an error occurs 
      */
     public int acceptSRTServer(int sockfd){
+        System.out.println("Accepting SRT connection");
         try{
             for(int i=0; i<TCBtable.length; i++){
                 if(TCBtable[i].nodeIDClient == sockfd){
@@ -166,14 +170,13 @@ public class SRTServer {
                     lisThreads.add(newThread);                       //to keep track of any loose threads
                     newThread.start();
 
-                    try{
-                        newThread.join();                         //wait for thread to finish and remove from thread list
-                        lisThreads.remove(newThread);
-                    }catch(InterruptedException e){
-                        return -1;
-                    }
+//                    try{
+//                        newThread.join();                         //wait for thread to finish and remove from thread list
+//                        lisThreads.remove(newThread);
+//                    }catch(InterruptedException e){
+//                        return -1;
+//                    }
 
-                    TCBtable[i].stateServer = TCBServer.CONNECTED;             // set state to CONNECTED
                     return 1;
                 }
             }
@@ -190,6 +193,7 @@ public class SRTServer {
      * @return              1 if succeeded ( was in the right state to complete a close) and -1 if fails (i.e., in the wrong state).
      */
     public int closeSRTServer(int socksr){
+        System.out.println("Closing SRT connection");
         try{
             for(int i=0; i<TCBtable.length; i++){
                 if(TCBtable[i].nodeIDClient == socksr){
@@ -244,8 +248,10 @@ public class SRTServer {
             TCBsr = blockSr;
 
             try {
-                input = new ObjectInputStream(connectionSocket.getInputStream());
                 output = new ObjectOutputStream(connectionSocket.getOutputStream());
+                output.flush();
+                input = new ObjectInputStream(connectionSocket.getInputStream());
+
             } catch (IOException e) {
                 System.err.println("Error creating streams for client " + clientID);
             }
@@ -257,6 +263,7 @@ public class SRTServer {
          */
         @Override
         public void run() {
+            System.out.println("running ListenThread " + clientID);
             timer = new Timer();
             try {
                 listening = true;
@@ -274,6 +281,7 @@ public class SRTServer {
                                 System.out.println("Recived type SYN, sending SYNACK");
                                 listening = false;
                                 //TCBsr.stateServer = CONNECTED;   handled in acceptSRTServer()
+                                TCBsr.stateServer = TCBServer.CONNECTED;             // set state to CONNECTED
 
                                 sendSeg = new Segment(Segment.SYNACK);
                                 sendSegment(sendSeg);
