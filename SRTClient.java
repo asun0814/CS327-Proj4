@@ -31,11 +31,6 @@ public class SRTClient {
     /** Descriptor to access the matching socket */
     private int socketDescriptor;
 
-//    /** Output stream to send segments to the server */
-//    private ObjectOutputStream output;
-//
-//    /** Input stream to receive segments from the server */
-//    private ObjectInputStream input;
     /** Output streams to send segments to the server */
     //private HashMap<Integer, ObjectInputStream> inputStreams = new HashMap<>();
     private ObjectInputStream[] inStreams;
@@ -62,72 +57,73 @@ public class SRTClient {
         FIN_TIMEOUT = 10000;
         SYN_MAX_RETRY = 5;
         FIN_MAX_RETRY = 5;
-
-    }
-
-
-     /**
-     * startOverlay() - Create a direct TCP link between the client and the server
-      * @return socketDescriptor    The TCP socket descriptor
-     */
-    public int startOverlay() throws IOException {
-        // The server port to establish a TCP link
-        ServerPort = 59090;
-        // Descriptor to access the matching socket
         socketDescriptor = 0;
 
-
-        // Get the IP address of the client machine to connect to the server at given host:port
-        InetAddress ip = InetAddress.getByName("localhost");
-                //.getHostAddress();
-
-        try {
-            System.out.println("1Connecting to " + ip + "...");
-            // Connect to the server at given host:port
-            Socket clientSocket = new Socket(ip, ServerPort);
-
-            int socketID = socketDescriptor;
-            // Assign a socket ID to the clientSocket
-            System.out.println("Socket ID: " + socketDescriptor);
-            socketDescriptor++;
-            System.out.println("Socket ID: " + socketDescriptor);
-            System.out.println("Socket ID 2: " + socketID);
-
-
-
-
-            // Store the socketDescriptor and the matching TCP connection in a hashmap
-            // In a similar way, store the input and output in two hashmaps along with the socket descripton
-            TCPConnections.put(socketDescriptor, clientSocket);
-
-            System.out.println("After2");
-            System.out.println("TCP link created successfully, connected to server at " + ip + ":" + ServerPort);
-
-            // Starts the ListenThread thread to handle incoming segments
-
-            ObjectOutputStream output = new ObjectOutputStream(clientSocket.getOutputStream());
-            System.out.println("overlay 1 after output stream open");
-            output.flush(); // Ensure header is sent immediately
-            ObjectInputStream input = new ObjectInputStream(clientSocket.getInputStream());
-            System.out.println("overlay 1 after streams open");
-
-            outStreams[socketID] = output;
-            inStreams[socketID] = input;
-
-
-            ListenThread listener = new ListenThread(socketID, clientSocket);
-            System.out.println("Listen thread created");
-            listener.start();
-            System.out.println("Listen thread started");
-
-            return socketDescriptor;
-
-        } catch (UnknownHostException e) {
-            System.err.println("Error connecting to server: " + e.getMessage());
-            return -1;
-        }
-
     }
+
+
+//     /**
+//     * startOverlay() - Create a direct TCP link between the client and the server
+//      * @return socketDescriptor    The TCP socket descriptor
+//     */
+//    public int startOverlay() throws IOException {
+//        // The server port to establish a TCP link
+//        ServerPort = 59090;
+//        // Descriptor to access the matching socket
+//        socketDescriptor = 0;
+//
+//
+//        // Get the IP address of the client machine to connect to the server at given host:port
+//        InetAddress ip = InetAddress.getByName("localhost");
+//                //.getHostAddress();
+//
+//        try {
+//            System.out.println("1Connecting to " + ip + "...");
+//            // Connect to the server at given host:port
+//            Socket clientSocket = new Socket(ip, ServerPort);
+//
+//            int socketID = socketDescriptor;
+//            // Assign a socket ID to the clientSocket
+//            System.out.println("Socket ID: " + socketDescriptor);
+//            socketDescriptor++;
+//            System.out.println("Socket ID: " + socketDescriptor);
+//            System.out.println("Socket ID 2: " + socketID);
+
+
+//
+//
+//            // Store the socketDescriptor and the matching TCP connection in a hashmap
+//            // In a similar way, store the input and output in two hashmaps along with the socket descripton
+//            TCPConnections.put(socketDescriptor, clientSocket);
+//
+//            System.out.println("After2");
+//            System.out.println("TCP link created successfully, connected to server at " + ip + ":" + ServerPort);
+//
+//            // Starts the ListenThread thread to handle incoming segments
+//
+//            ObjectOutputStream output = new ObjectOutputStream(clientSocket.getOutputStream());
+//            System.out.println("overlay 1 after output stream open");
+//            output.flush(); // Ensure header is sent immediately
+//            ObjectInputStream input = new ObjectInputStream(clientSocket.getInputStream());
+//            System.out.println("overlay 1 after streams open");
+//
+//            outStreams[socketID] = output;
+//            inStreams[socketID] = input;
+//
+//
+//            ListenThread listener = new ListenThread(socketID, clientSocket);
+//            System.out.println("Listen thread created");
+//            listener.start();
+//            System.out.println("Listen thread started");
+//
+//            return socketDescriptor;
+//
+//        } catch (UnknownHostException e) {
+//            System.err.println("Error connecting to server: " + e.getMessage());
+//            return -1;
+//        }
+//
+//    }
 
     /**
      * initSRTClient() - initializes the TCB table marking all entries NULL, starts the ListenThread thread
@@ -328,23 +324,23 @@ public class SRTClient {
         }
 
     }
-    /**
-     * stopOverlay() - Stop the overlay before terminating their processes
-     *
-     */
-    public void stopOverlay() throws IOException {
-        try {
-            //Close all the sockets and clear the TCP connections map
-            for (Socket socket : TCPConnections.values()) {
-                socket.close();
-            }
-            TCPConnections.clear();
-            System.out.println("Overlay stopped successfully, all connections closed.");
-        } catch (IOException e) {
-            System.err.println("Close error: " + e.getMessage());
-        }
-    }
-
+//    /**
+//     * stopOverlay() - Stop the overlay before terminating their processes
+//     *
+//     */
+//    public void stopOverlay() throws IOException {
+//        try {
+//            //Close all the sockets and clear the TCP connections map
+//            for (Socket socket : TCPConnections.values()) {
+//                socket.close();
+//            }
+//            TCPConnections.clear();
+//            System.out.println("Overlay stopped successfully, all connections closed.");
+//        } catch (IOException e) {
+//            System.err.println("Close error: " + e.getMessage());
+//        }
+//    }
+//
 
     /**
      * sendSegment() - Send a segment of particular type to the server
@@ -370,7 +366,7 @@ public class SRTClient {
      * SYNACKs and FINACKs
      * Technically works as a receive() method in the Client class
      */
-    public class ListenThread extends Thread {
+    public static class ListenThread extends Thread {
         // Boolean used to cancel the running thread safely when necessary
         private boolean running = true;
         // Used to identify the specific TCB object in the table
@@ -390,19 +386,8 @@ public class SRTClient {
             System.out.println("Listen thread 1");
             socketID = socksr;
             connectSock = connectionSocket;
-            //output = outputStreams.get(socketID);
-            //input = inputStreams.get(socketID);
-
-//            output = new ObjectOutputStream(connectSock.getOutputStream());
-//            System.out.println("Listen thread 1 after output stream open");
-//            input = new ObjectInputStream(connectSock.getInputStream());
-//            System.out.println("Listen thread 1 after streams open");
-
-            output = outStreams[socketID];
-            input =  inStreams[socketID];
 
 
-            tcb = TCBTable[socketID];
             System.out.println("This is the tcb object " + tcb);
             System.out.println("Input output start");
 //            output = new ObjectOutputStream(TCPConnections.get(socksr).getOutputStream());

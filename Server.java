@@ -270,6 +270,11 @@ public class Server{
                     } else if (received instanceof String) {
                         // If the client sent ACK/NAK
                         System.out.println("\nClient " + clientID + ": " + received);
+                    } else if (received instanceof Segment) {
+                        // If the client sent a segment
+                        System.out.println("\nClient " + clientID + " 's segment : " + Segment.SYN);
+                        Segment rSegment = new Segment(Segment.SYNACK);
+
                     }
 
                 }
@@ -293,6 +298,21 @@ public class Server{
                 output.flush();                             //send
             } catch (IOException e) {
                 System.err.println("Error sending to client " + clientID);
+            }
+        }
+
+        /**
+         * sendSegment() - Send a segment of particular type to the server
+         * @param segment - send a segment object
+         */
+        public void sendSegment(Segment segment){
+            try {
+                // Similar to other send methods, send the segment via the TCP sockets
+                output.writeObject(segment);
+                // Ouputstream sent the segment to the server
+                output.flush();
+            } catch (IOException e) {
+                System.err.println("Segment send failed: " + e.getMessage());
             }
         }
 
@@ -369,26 +389,32 @@ public class Server{
             }
 
 
-            //FROM PROJ 1
-            //start server on port 59090
-            //Server server = new Server(59090);
-            //server.start();
+//            FROM PROJ 1
+//        try {
+//            // start server on port 59090
+//            Server server = new Server(59090);
+//            server.start();
+//
+//            //Close all connected client sockets first
+//            System.out.println("Closing client connections...");
+//            for (ClientHandler handler : server.clients) {
+//                handler.closeConnection();
+//            }
+//            System.out.println("All client connections closed.");
+//            // If the clienthandler list is empty, close all the server socket and stop the server
+//            if (server.clients.isEmpty()){
+//                server.serverSocket.close();
+//                server.stopServer();
+//            }
 
-            //Close all connected client sockets first
-            //System.out.println("Closing client connections...");
-            //for (ClientHandler handler : server.clients) {
-            //    handler.closeConnection();
-            //}
-            //System.out.println("All client connections closed.");
-            // If the clienthandler list is empty, close all the server socket and stop the server
-            //if (server.clients.isEmpty()){
-            //    server.serverSocket.close();
-            //    server.stopServer();
-            //}
 
-
-        } catch (Exception e ) {
+        } catch (IOException e) {
             e.printStackTrace();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
+
     }
 }

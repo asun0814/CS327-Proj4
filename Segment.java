@@ -1,3 +1,5 @@
+import java.io.Serializable;
+
 /**
  * CS 327 Proj 2
  * The Segment class represents a message exchanged between the client and the server,
@@ -6,7 +8,7 @@
  * @start date: 10/15/2025
  */
 
-public class Segment {
+public class Segment implements Serializable {
     // The type is defined using the following static final values
     public static final int SYN = 0;
     public static final int SYNACK = 1;
