@@ -32,12 +32,12 @@ public class SRTClient {
 //    /** Descriptor to access the matching socket */
 //    private int socketDescriptor;
 
-//    /** Output streams to send segments to the server */
-//    //private HashMap<Integer, ObjectInputStream> inputStreams = new HashMap<>();
-//    private ObjectInputStream[] inStreams;
-//    /** Input streams to receive segments from the server */
-//    //private HashMap<Integer, ObjectOutputStream> outputStreams = new HashMap<>();
-//    private ObjectOutputStream[] outStreams;
+    /** Output streams to send segments to the server */
+    public HashMap<Integer, ObjectInputStream> inputStreams = new HashMap<>();
+    //private ObjectInputStream[] inStreams;
+    /** Input streams to receive segments from the server */
+    public HashMap<Integer, ObjectOutputStream> outputStreams = new HashMap<>();
+    //private ObjectOutputStream[] outStreams;
 
     /** The number of milliseconds to wait for SYNACK before retransmitting SYN, should be 100 milliseconds */
     private final int SYN_TIMEOUT;
@@ -130,13 +130,17 @@ public class SRTClient {
      * to handle incoming segments
      *
      */
-    public void initSRTClient(HashMap<Integer, Socket> clientSockets){
+    public void initSRTClient(HashMap<Integer, Socket> clientSockets, HashMap<Integer, ObjectInputStream> ins
+            ,HashMap<Integer, ObjectOutputStream> outs ){
         System.out.println("Initializing SRT Client...");
         // Initializes the TCB table marking all entries NULL
         TCPConnections = clientSockets;
         TCBTable = new TCBClient[maxTCBEntries];
 //        outStreams = new ObjectOutputStream[maxTCBEntries];
 //        inStreams = new ObjectInputStream[maxTCBEntries];
+
+        outputStreams = outs;
+        inputStreams = ins;
 
         for (int i = 0; i < TCBTable.length; i++) {
             TCBTable[i] = null;
@@ -153,6 +157,19 @@ public class SRTClient {
                 // Create a TCB for this connection
                 TCBClient tcb = new TCBClient();
                 TCBTable[socketID] = tcb;
+
+
+                // System.out.println("This is the tcb object " + tcb);
+                // System.out.println("Input output start");
+                // ObjectOutputStream output = new ObjectOutputStream(newSocket.getOutputStream());
+                // System.out.println("\n ouput done, input start \n");
+                // ObjectInputStream input = new ObjectInputStream(newSocket.getInputStream());
+                // System.out.println("Input output finish");
+
+                // inputStreams.put(socketID, input);
+                // outputStreams.put(socketID, output);
+
+
 
                 // Start listener thread
                 ListenThread listenThread = new ListenThread(socketID, newSocket, tcb, this);
@@ -210,9 +227,22 @@ public class SRTClient {
      */
     public int connectSRTClient(int socksr, int server_port){
         System.out.println("Connecting to the server ....");
+        System.out.println("looking for socket: " + socksr);
         // Count of retransmission time
         int retryCount = 0;
         try {
+
+
+
+
+            for (int key : TCPConnections.keySet()) {
+                System.out.println(key);
+            }
+
+            System.out.println("DOne looking through");
+
+
+            System.out.println("looking for socket" + TCPConnections.get(socksr).toString());
             // Find the matching TCB entry using the socket ID
             TCBClient tcb = TCBTable[socksr];
             // Handle boundary situation when TCB is null
@@ -270,6 +300,7 @@ public class SRTClient {
      * @return            1 if the disconnection was successful, -1 if the disconnection failed
      */
     public int disconnSRTClient(int socksr){
+        System.out.println("Starting disconnectSRTClient");
         int retryCount = 0;
         try {
             // Find the matching TCB entry using the socket ID
@@ -370,7 +401,7 @@ public class SRTClient {
     public void sendSegment(int socksr, Segment segment){
         try {
             Socket newSocket = TCPConnections.get(socksr);
-            ObjectOutputStream out = new ObjectOutputStream(newSocket.getOutputStream());
+            ObjectOutputStream out = outputStreams.get(socksr);
             // Similar to other send methods, send the segment via the TCP sockets
             out.writeObject(segment);
             // Ouputstream sent the segment to the server
@@ -380,7 +411,4 @@ public class SRTClient {
         }
     }
 
-    }
-
-
-
+}

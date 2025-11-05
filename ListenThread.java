@@ -32,12 +32,17 @@ public class ListenThread extends Thread {
         tcb = newTCB;
         currentClient = newClient;
 
+        output = currentClient.outputStreams.get(socketID);
+        input = currentClient.inputStreams.get(socketID);
 
-        System.out.println("This is the tcb object " + tcb);
-        System.out.println("Input output start");
-        output = new ObjectOutputStream(connectionSocket.getOutputStream());
-        input = new ObjectInputStream(connectionSocket.getInputStream());
-        System.out.println("Input output finish");
+        // System.out.println("This is the tcb object " + tcb);
+        // System.out.println("Input output start");
+        // output = new ObjectOutputStream(connectionSocket.getOutputStream());
+        // System.out.println("\n ouput done, input start \n");
+        // input = new ObjectInputStream(connectionSocket.getInputStream());
+        // System.out.println("Input output finish");
+
+
     }
 
     @Override

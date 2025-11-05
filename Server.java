@@ -10,6 +10,7 @@
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -27,15 +28,20 @@ public class Server{
     private ArrayList<ClientHandler> clients;
 
     /** Counter to assign a unique ID to each client */
-    private int clientCounter;
+    public int clientCounter;
 
     /** Flag to keep the server running; setting to false stops the server */
     private boolean running;
 
+    /* The SRTServer object responsible for the SRT layer */
     private SRTServer srtS;
 
+    /* the maximum clients this server can handle */
     int maxClients;
 
+    /* TEMP IN OUT STREAMS */
+    ObjectInputStream input;
+    ObjectOutputStream output;
 
     /**
      * Constructor: Initializes the server on a specific port.
@@ -45,16 +51,15 @@ public class Server{
      */
     public Server(int newPort, int max) throws IOException {
         port = newPort;
-        // serverSocket = new ServerSocket(newPort);       // create a the server's listening socket using the port number
+        serverSocket = new ServerSocket(newPort);       // create a the server's listening socket using the port number
         clients = new ArrayList<>();                    // initialize client list
-        clientCounter = 0;                              // start client IDs at 0
-        maxClients = max;
+        clientCounter = 0;
+        maxClients = max;                     // start client IDs at 0
 
         running = true;                                 // set server running flag
         System.out.println("Server started on port " + port);
-        serverSocket = new ServerSocket(port);
-        srtS = new SRTServer(port, maxClients, serverSocket);
 
+        srtS = new SRTServer(port, maxClients, serverSocket, this); // create the SRT layer
     }
 
     /**
@@ -73,57 +78,85 @@ public class Server{
 
                 // Create a handler for this client
                 ClientHandler handler = new ClientHandler(connectionSocket, clientCounter);
+                //srtS.servSocks[clientCounter] = connectionSocket;
 
                 // Add the handler to the list of clients
                 clients.add(handler);
 
+
                 // Start the handler thread, the server can accept new clients while
                 // existing clients are still connected
                 System.out.println("Client " + clientCounter + " connected.");
-                handler.start();
+                //handler.start();
 
             } catch (IOException e) {
                 System.err.println("Error accepting client: " + e.getMessage());
             }
         }
     }
-/**
- **
- * startOverlay() - Create a direct TCP link between the client and the server
- *
- *
- public int startOverlay(){
- try{
- srtS = new SRTServer(port, maxClients, serverSocket);
- serverSocket = new ServerSocket(59090);
- Socket s = serverSocket.accept();
 
- start();
-
- }catch(IOException e){
- System.out.println("error in startOverlay");
- return -1;
- }
- return 1;
- }
+    public int startOverlay() {
+        try{
+            Socket connectionSocket = serverSocket.accept();
 
 
- **
- * stopOverlay() - Stop the overlay before terminating their processes
- *
- *
- public int stopOverlay(){
- try{
- serverSocket.close();
- }catch(IOException e){
- System.out.println("error in startOverlay");
- return -1;
- }
- return 1;
- }
 
- */
+            // Create a handler for this client
+            //ClientHandler handler = new ClientHandler(connectionSocket, clientCounter);
 
+            try {
+                output = new ObjectOutputStream(connectionSocket.getOutputStream());
+                output.flush();
+                input = new ObjectInputStream(connectionSocket.getInputStream());
+
+            } catch (IOException e) {
+                System.err.println("Error creating streams for client " + clientCounter);
+            }
+
+            srtS.servSocks[clientCounter] = connectionSocket;
+            srtS.inputStreams.put(clientCounter, input);
+            srtS.outputStreams.put(clientCounter, output);
+
+
+            // Add the handler to the list of clients
+            //clients.add(handler);
+
+
+            // Start the handler thread, the server can accept new clients while
+            // existing clients are still connected
+            System.out.println("Client " + clientCounter + " connected.");
+            //handler.start();
+
+            // Assign a unique ID to this client
+            clientCounter++;
+
+        }catch(Exception e){
+            return -1;
+        }
+        return 1;
+    }
+
+
+    /**
+     * stopOverlay() - Stop the overlay before terminating their processes
+     *
+     */
+    public int stopOverlay(){
+        System.out.println("stopping overlay");
+        running = false;
+        try{
+            for(int i=0; i< srtS.servSocks.length; i++){
+                if(srtS.servSocks[i] != null && !srtS.servSocks[i].isClosed()){
+                    srtS.servSocks[i].close();
+                }
+                srtS.TCBtable[i] = null;
+            }
+        }catch(IOException e){
+            System.out.println("error in startOverlay");
+            return -1;
+        }
+        return 1;
+    }
 
     /**
      * Sends a message to a specific client by ID.
@@ -194,6 +227,44 @@ public class Server{
     }
 
 
+    private class AcceptClients extends Thread{
+
+        /**
+         * Starts the server loop. (start from above server class)
+         * Waits for new client connections. Creates ClientHandler threads them.
+         */
+        @Override
+        public void run() {
+            System.out.println("Waiting for clients...");
+            while (running) {
+                try {
+                    // Accept a new client connection (blocks until client connects)
+                    Socket connectionSocket = serverSocket.accept();
+
+                    // Assign a unique ID to this client
+                    clientCounter++;
+
+                    // Create a handler for this client
+                    ClientHandler handler = new ClientHandler(connectionSocket, clientCounter);
+                    srtS.servSocks[clientCounter] = connectionSocket;
+
+                    // Add the handler to the list of clients
+                    clients.add(handler);
+
+
+                    // Start the handler thread, the server can accept new clients while
+                    // existing clients are still connected
+                    System.out.println("Client " + clientCounter + " connected.");
+                    //handler.start();
+
+                } catch (IOException e) {
+                    System.err.println("Error accepting client: " + e.getMessage());
+                }
+            }
+        }
+    }
+
+
     // Inner class for handling one client
     private class ClientHandler extends Thread {
         private Socket connectionSocket;
@@ -248,7 +319,7 @@ public class Server{
                                     break;
 
                                 case "What's the server status?":
-                                    responseMsgText = "Currently hosting " + clients.size() + "clients.";
+                                    responseMsgText = "Currently hosting " + clients.size() + " clients.";
                                     break;
 
                                 case "Requesting client list":
@@ -270,11 +341,6 @@ public class Server{
                     } else if (received instanceof String) {
                         // If the client sent ACK/NAK
                         System.out.println("\nClient " + clientID + ": " + received);
-                    } else if (received instanceof Segment) {
-                        // If the client sent a segment
-                        System.out.println("\nClient " + clientID + " 's segment : " + Segment.SYN);
-                        Segment rSegment = new Segment(Segment.SYNACK);
-
                     }
 
                 }
@@ -302,20 +368,21 @@ public class Server{
         }
 
         /**
-         * sendSegment() - Send a segment of particular type to the server
-         * @param segment - send a segment object
+         * Sends either an ACK (success) or NAK (failure) string
+         * to the client to acknowledge a message or event.
+         * NOTE: currently not used
+         *
+         * @param ack true = send "ACK", false = send "NAK".
          */
-        public void sendSegment(Segment segment){
+        public void sendAckNak(boolean ack) {
             try {
-                // Similar to other send methods, send the segment via the TCP sockets
-                output.writeObject(segment);
-                // Ouputstream sent the segment to the server
-                output.flush();
+                // Create a new string("ACK" or "NAK") depending on the boolean parameter input
+                output.writeObject(ack ? "ACK" : "NAK");
+                output.flush();                             //send
             } catch (IOException e) {
-                System.err.println("Segment send failed: " + e.getMessage());
+                System.err.println("ACK/NAK send failed: " + e.getMessage());
             }
         }
-
 
         /**
          * Closes this client’s input/output streams and socket.
@@ -345,76 +412,86 @@ public class Server{
      * @param args Command line arguments
      */
     public static void main(String[] args) {
-
-        /*main () {
-
-
-        // call the startOverlay method , throw error if it returns -1
-        // call the initSRTServer () method , throw error if it returns -1
-        // create a srt server sock at port 88 using the createSockSRTServer (88)
-        and assign to socksr , throw error if it returns -1
-        // connect to srt client using acceptSRTServer ( socksr ), throw error if it
-        returns -1
-        // for now , just use a Thread . sleep (10000) here
-        // disconnect using closeSRTServer ( sockfd ), throw error if it returns -1
-        // finally , call stopOverlay () , throw error if it returns -1
-    } */
-
         try {
+
+            // start server on port 59090
             Server server = new Server(59090, 5);
+            //server.start();
 
-            if(server.srtS.initSRTServer()==-1){
-                throw new Exception("innitSRTServer failed");
-            }
+            System.out.println("overlay returns: " + server.startOverlay());
 
-            if(server.srtS.startOverlay()== -1){
-                throw new Exception("startOverlay failed");
-            }
+            try{
+                if(server.srtS.initSRTServer()==-1){
+                    throw new Exception("innitSRTServer failed");
+                }
 
-            int socksr = server.srtS.createSockSRTServer(88);
-            if(socksr == -1){
-                throw new Exception("createSockSRTServer failed");
-            }
-            if (server.srtS.acceptSRTServer(socksr) == -1){
-                throw new Exception("createSockSRTServer failed");
-            }
-
-            Thread.sleep(10000);
-            int sockfd = 1; //_______________________________________________FIX
-            if (server.srtS.closeSRTServer(sockfd) == -1){
-                throw new Exception("closeSRTServer failed");
-            }
-            if (server.srtS.stopOverlay() == -1){
-                throw new Exception("stopOverlay failed");
-            }
+                // System.out.println();
+                // for(int i=0; i< server.srtS.tableSize; i++){
+                //     TCBServer current = server.srtS.TCBtable[i];
+                //     System.out.print(current.nodeIDServer +  ", " + current.portNumServer + ", " + current.nodeIDClient + ", "  + current.portNumClient + ", " + current.stateServer);
+                // }
 
 
-//            FROM PROJ 1
-//        try {
-//            // start server on port 59090
-//            Server server = new Server(59090);
-//            server.start();
-//
-//            //Close all connected client sockets first
-//            System.out.println("Closing client connections...");
-//            for (ClientHandler handler : server.clients) {
-//                handler.closeConnection();
-//            }
-//            System.out.println("All client connections closed.");
-//            // If the clienthandler list is empty, close all the server socket and stop the server
-//            if (server.clients.isEmpty()){
-//                server.serverSocket.close();
-//                server.stopServer();
-//            }
+                int socksr = server.srtS.createSockSRTServer(88);
+                if(socksr == -1){
+                    throw new Exception("createSockSRTServer failed");
+                }
+
+                // System.out.println();
+                // for(int i=0; i< server.srtS.tableSize; i++){
+                //     TCBServer current = server.srtS.TCBtable[i];
+                //     if(current != null){
+                //          System.out.print(current.nodeIDServer +  ", " + current.portNumServer + ", " + current.nodeIDClient + ", "  + current.portNumClient + ", " + current.stateServer + "\n");
+                //     }
+
+                // }
+
+                int sockfd = 0; //_______________________________________________FIX
+                if (server.srtS.acceptSRTServer(socksr) == -1){
+                    throw new Exception("createSockSRTServer failed");
+                }
+
+                System.out.println("Sleeping for 10000");
+                Thread.sleep(10000);
+                System.out.println("sleep over");
+
+                if (server.srtS.closeSRTServer(sockfd) == -1){
+                    throw new Exception("closeSRTServer failed");
+                }
+
+
+                if (server.stopOverlay() == -1){
+                    throw new Exception("stopOverlay failed");
+                }
+
+            }catch(Exception e){
+                System.out.println("Error caught");
+            }
+
+
+            server.running = false;
+            System.out.println("server.running set to false");
+
+            // System.out.println("stop overlay returns: " + server.stopOverlay());
+
+
+
+            //Close all connected client sockets first
+            System.out.println("Closing client connections...");
+            for (ClientHandler handler : server.clients) {
+                handler.closeConnection();
+            }
+            System.out.println("All client connections closed.");
+            // If the clienthandler list is empty, close all the server socket and stop the server
+            if (server.clients.isEmpty()){
+                server.serverSocket.close();
+                server.stopServer();
+            }
+
 
 
         } catch (IOException e) {
             e.printStackTrace();
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
         }
-
     }
 }
