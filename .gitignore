@@ -1,0 +1,15 @@
+# Ignore compiled Java class files
+*.class
+
+# Ignore generated JAR, WAR, and EAR files
+*.jar
+*.war
+*.ear
+
+# Ignore log files
+*.log
+
+# Ignore temporary files
+*.tmp
+*.swp
+*~
