@@ -1,4 +1,4 @@
-/*
+/**
  * CS 327 Proj 2
  * The SRTClient class setup overlays, initializes SRTClients, and manages connection setup and teardown and overlay
  * teardown
@@ -10,7 +10,6 @@
 import java.io.*;
 import java.net.InetAddress;
 import java.net.Socket;
-import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -29,15 +28,11 @@ public class SRTClient {
     /** Max amount of TCB Objects we could store in the TCB table, determine the length for the TCB array */
     private int maxTCBEntries;
 
-//    /** Descriptor to access the matching socket */
-//    private int socketDescriptor;
-
     /** Output streams to send segments to the server */
     public HashMap<Integer, ObjectInputStream> inputStreams = new HashMap<>();
-    //private ObjectInputStream[] inStreams;
+
     /** Input streams to receive segments from the server */
     public HashMap<Integer, ObjectOutputStream> outputStreams = new HashMap<>();
-    //private ObjectOutputStream[] outStreams;
 
     /** The number of milliseconds to wait for SYNACK before retransmitting SYN, should be 100 milliseconds */
     private final int SYN_TIMEOUT;
@@ -62,69 +57,6 @@ public class SRTClient {
     }
 
 
-//     /**
-//     * startOverlay() - Create a direct TCP link between the client and the server
-//      * @return socketDescriptor    The TCP socket descriptor
-//     */
-//    public int startOverlay() throws IOException {
-//        // The server port to establish a TCP link
-//        ServerPort = 59090;
-//        // Descriptor to access the matching socket
-//        socketDescriptor = 0;
-//
-//
-//        // Get the IP address of the client machine to connect to the server at given host:port
-//        InetAddress ip = InetAddress.getByName("localhost");
-//                //.getHostAddress();
-//
-//        try {
-//            System.out.println("1Connecting to " + ip + "...");
-//            // Connect to the server at given host:port
-//            Socket clientSocket = new Socket(ip, ServerPort);
-//
-//            int socketID = socketDescriptor;
-//            // Assign a socket ID to the clientSocket
-//            System.out.println("Socket ID: " + socketDescriptor);
-//            socketDescriptor++;
-//            System.out.println("Socket ID: " + socketDescriptor);
-//            System.out.println("Socket ID 2: " + socketID);
-
-
-//
-//
-//            // Store the socketDescriptor and the matching TCP connection in a hashmap
-//            // In a similar way, store the input and output in two hashmaps along with the socket descripton
-//            TCPConnections.put(socketDescriptor, clientSocket);
-//
-//            System.out.println("After2");
-//            System.out.println("TCP link created successfully, connected to server at " + ip + ":" + ServerPort);
-//
-//            // Starts the ListenThread thread to handle incoming segments
-//
-//            ObjectOutputStream output = new ObjectOutputStream(clientSocket.getOutputStream());
-//            System.out.println("overlay 1 after output stream open");
-//            output.flush(); // Ensure header is sent immediately
-//            ObjectInputStream input = new ObjectInputStream(clientSocket.getInputStream());
-//            System.out.println("overlay 1 after streams open");
-//
-//            outStreams[socketID] = output;
-//            inStreams[socketID] = input;
-//
-//
-//            ListenThread listener = new ListenThread(socketID, clientSocket);
-//            System.out.println("Listen thread created");
-//            listener.start();
-//            System.out.println("Listen thread started");
-//
-//            return socketDescriptor;
-//
-//        } catch (UnknownHostException e) {
-//            System.err.println("Error connecting to server: " + e.getMessage());
-//            return -1;
-//        }
-//
-//    }
-
     /**
      * initSRTClient() - initializes the TCB table marking all entries NULL, starts the ListenThread thread
      * to handle incoming segments
@@ -136,16 +68,12 @@ public class SRTClient {
         // Initializes the TCB table marking all entries NULL
         TCPConnections = clientSockets;
         TCBTable = new TCBClient[maxTCBEntries];
-//        outStreams = new ObjectOutputStream[maxTCBEntries];
-//        inStreams = new ObjectInputStream[maxTCBEntries];
-
         outputStreams = outs;
         inputStreams = ins;
 
         for (int i = 0; i < TCBTable.length; i++) {
             TCBTable[i] = null;
-//            outStreams[i] = null;
-//            inStreams[i] = null;
+
         }
 
         // Create a thread for each TCP connection by looping through the TCP hashmap
@@ -157,19 +85,6 @@ public class SRTClient {
                 // Create a TCB for this connection
                 TCBClient tcb = new TCBClient();
                 TCBTable[socketID] = tcb;
-
-
-                // System.out.println("This is the tcb object " + tcb);
-                // System.out.println("Input output start");
-                // ObjectOutputStream output = new ObjectOutputStream(newSocket.getOutputStream());
-                // System.out.println("\n ouput done, input start \n");
-                // ObjectInputStream input = new ObjectInputStream(newSocket.getInputStream());
-                // System.out.println("Input output finish");
-
-                // inputStreams.put(socketID, input);
-                // outputStreams.put(socketID, output);
-
-
 
                 // Start listener thread
                 ListenThread listenThread = new ListenThread(socketID, newSocket, tcb, this);
@@ -191,7 +106,7 @@ public class SRTClient {
      *
      */
     public int createSockSRTClient(int client_port) throws IOException {
-        System.out.println("Create Client socket ....");
+        System.out.println("[createSockSRTClient] Create Client socket ....");
         int socketID = 0;
         // Looks up the client TCB table to find the first NULL entry, and creates a new TCB entry
         for (int i = 0; i < TCBTable.length; i++) {
@@ -207,9 +122,9 @@ public class SRTClient {
                 TCBTable[i].nodeIDServer = socketID;
 
                 System.out.println("[createSockSRTClient] New SRTclient socket created:");
-                System.out.println("  - Socket ID: " + socketID);
-                System.out.println("  - Client Port: " + client_port);
-                System.out.println("  - Initial State: CLOSED");
+//                System.out.println("  - Socket ID: " + socketID);
+//                System.out.println("  - Client Port: " + client_port);
+//                System.out.println("  - Initial State: CLOSED");
 
                 return socketID;
             }
@@ -226,23 +141,11 @@ public class SRTClient {
      * @return               1 if the connection is successfully setup, -1 if the connection failed
      */
     public int connectSRTClient(int socksr, int server_port){
-        System.out.println("Connecting to the server ....");
-        System.out.println("looking for socket: " + socksr);
+        System.out.println("[connectSRTClient] Connecting to the server ....");
+//        System.out.println("[connectSRTClient] Looking for socket: " + socksr);
         // Count of retransmission time
         int retryCount = 0;
         try {
-
-
-
-
-            for (int key : TCPConnections.keySet()) {
-                System.out.println(key);
-            }
-
-            System.out.println("DOne looking through");
-
-
-            System.out.println("looking for socket" + TCPConnections.get(socksr).toString());
             // Find the matching TCB entry using the socket ID
             TCBClient tcb = TCBTable[socksr];
             // Handle boundary situation when TCB is null
@@ -272,7 +175,7 @@ public class SRTClient {
                         return 1;
                     }
                 } catch (InterruptedException e) {
-                    System.err.println("Thread interrupted" + e.getMessage());
+                    System.err.println("[connectSRTClient] Thread interrupted" + e.getMessage());
                     return -1;
                 }
                 // SYNACK not received, retransmit SYN
@@ -286,7 +189,7 @@ public class SRTClient {
             System.out.println("[connectSRTClient] Connection failed after retries.");
             return -1;
         } catch (ArrayIndexOutOfBoundsException e) {
-            System.err.println("Error connecting to server: " + e.getMessage());
+            System.err.println("[connectSRTClient] Error connecting to server: " + e.getMessage());
             return -1;
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -300,7 +203,7 @@ public class SRTClient {
      * @return            1 if the disconnection was successful, -1 if the disconnection failed
      */
     public int disconnSRTClient(int socksr){
-        System.out.println("Starting disconnectSRTClient");
+        System.out.println("[disconnSRTClient] Starting disconnectSRTClient");
         int retryCount = 0;
         try {
             // Find the matching TCB entry using the socket ID
@@ -312,7 +215,7 @@ public class SRTClient {
             // Create and send a FIN segment
             Segment seg1 = new Segment(Segment.FIN);
             sendSegment(socksr, seg1);
-            System.out.println("[connectSRTClient] FIN segment sent to the server ");
+            System.out.println("[disconnSRTClient] FIN segment sent to the server ");
 
             // Change the status of the TCB object to FINWAIT to wait for FINACK
             tcb.stateClient = TCBClient.FINWAIT;
@@ -330,7 +233,7 @@ public class SRTClient {
                         return 1;
                     }
                 } catch (InterruptedException e) {
-                    System.err.println("Thread interrupted" + e.getMessage());
+                    System.err.println("[disconnSRTClient] Thread interrupted" + e.getMessage());
                     return -1;
                 }
                 // FINACK not received, retransmit FIN
@@ -344,7 +247,7 @@ public class SRTClient {
             System.out.println("[disconnSRTClient] Disconnection failed after retries, close the TCB object ");
             return -1;
         } catch (ArrayIndexOutOfBoundsException e) {
-            System.err.println("Error disconnecting from the server: " + e.getMessage());
+            System.err.println("[disconnSRTClient]  Error disconnecting from the server: " + e.getMessage());
             return -1;
         }
     }
@@ -370,28 +273,11 @@ public class SRTClient {
             return 1;
         } catch (IllegalStateException e) {
             // Return -1 when the TCB object is in the wrong state
-            System.err.println("Socket is not in the correct state to be closed: " + e.getMessage());
+            System.err.println(" [closeSRTClient] Socket is not in the correct state to be closed: " + e.getMessage());
             return -1;
         }
 
     }
-//    /**
-//     * stopOverlay() - Stop the overlay before terminating their processes
-//     *
-//     */
-//    public void stopOverlay() throws IOException {
-//        try {
-//            //Close all the sockets and clear the TCP connections map
-//            for (Socket socket : TCPConnections.values()) {
-//                socket.close();
-//            }
-//            TCPConnections.clear();
-//            System.out.println("Overlay stopped successfully, all connections closed.");
-//        } catch (IOException e) {
-//            System.err.println("Close error: " + e.getMessage());
-//        }
-//    }
-//
 
     /**
      * sendSegment() - Send a segment of particular type to the server
@@ -407,7 +293,7 @@ public class SRTClient {
             // Ouputstream sent the segment to the server
             out.flush();
         } catch (IOException e) {
-            System.err.println("Segment send failed: " + e.getMessage());
+            System.err.println("[SRTClient sendSegment] Segment send failed: " + e.getMessage());
         }
     }
 

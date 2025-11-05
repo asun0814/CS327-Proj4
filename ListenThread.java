@@ -1,3 +1,11 @@
+/**
+ * CS 327 Proj 2
+ * ListenThread class handles the segments received by the client
+ * @author: Alix Sun, Elaine Zhou
+ * @start date: 10/15/2025
+ */
+
+
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -14,7 +22,7 @@ public class ListenThread extends Thread {
     // Used to identify the specific TCB object in the table
     private int socketID;
     private SRTClient currentClient;
-    // Input and output streams for the ListenThread
+    // Input and output streams for the ListenThread, taken from the input, output streams hashmaps
     private ObjectOutputStream output;
     private ObjectInputStream input;
     // Specific TCB object processed in the thread
@@ -23,25 +31,17 @@ public class ListenThread extends Thread {
 
     /**
      * Constructor for ListenThread
-     *
      */
     public ListenThread(int socksr, Socket connectionSocket, TCBClient newTCB, SRTClient newClient) throws IOException {
-        System.out.println("Listen thread 1");
+        System.out.println("[ListenThread] Listen thread " + socksr);
         socketID = socksr;
         connectSock = connectionSocket;
         tcb = newTCB;
         currentClient = newClient;
-
+        // Get input and output stream from the specific TCP connection by getting it from the
+        // input streams and output streams hashmap
         output = currentClient.outputStreams.get(socketID);
         input = currentClient.inputStreams.get(socketID);
-
-        // System.out.println("This is the tcb object " + tcb);
-        // System.out.println("Input output start");
-        // output = new ObjectOutputStream(connectionSocket.getOutputStream());
-        // System.out.println("\n ouput done, input start \n");
-        // input = new ObjectInputStream(connectionSocket.getInputStream());
-        // System.out.println("Input output finish");
-
 
     }
 

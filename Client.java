@@ -14,9 +14,6 @@ import java.util.HashMap;
 import java.util.Scanner;
 
 public class Client {
-    /** TCP socket that represents the connection to the server */
-    private Socket clientSocket;
-
     /** Output stream to send objects (Message or ACK/NAK) to the server */
     private ObjectOutputStream output;
 
@@ -25,10 +22,9 @@ public class Client {
 
     /** Output streams to send segments to the server */
     public HashMap<Integer, ObjectInputStream> inputStreams = new HashMap<>();
-    //private ObjectInputStream[] inStreams;
+
     /** Input streams to receive segments from the server */
     public HashMap<Integer, ObjectOutputStream> outputStreams = new HashMap<>();
-    //private ObjectOutputStream[] outStreams;
 
     /** Hashmap used to store the existing TCP connections and access these sockets via integer
      * TCP descriptors */
@@ -67,20 +63,18 @@ public class Client {
             inputStreams.put(socketDescriptor, input);
             outputStreams.put(socketDescriptor, output);
 
-
-            System.out.println("1Connecting to " + "localhost" + "...");
-//            System.out.println("Socket ID: " + socketDescriptor);
+            System.out.println("[Client startOverlay] Connecting to " + "localhost" + "...");
 
             // Store the socketDescriptor and the matching TCP connection in a hashmap
             // In a similar way, store the input and output in two hashmaps along with the socket description
             TCPConnections.put(socketDescriptor, newSocket);
-            System.out.println("TCP link created successfully, connected to server at " + "localhost" + ":" + ServerPort);
+            System.out.println("[Client startOverlay] TCP link created successfully, connected to server at " + "localhost" + ":" + ServerPort);
 
             socketDescriptor++;
             return socketDescriptor;
 
         } catch (UnknownHostException e) {
-            System.err.println("Error connecting to server: " + e.getMessage());
+            System.err.println("[Client startOverlay] Error connecting to server: " + e.getMessage());
             return -1;
         }
 
@@ -97,9 +91,9 @@ public class Client {
                 socket.close();
             }
             TCPConnections.clear();
-            System.out.println("Overlay stopped successfully, all connections closed.");
+            System.out.println("[Client stopOverlay] Overlay stopped successfully, all connections closed.");
         } catch (IOException e) {
-            System.err.println("Close error: " + e.getMessage());
+            System.err.println("[Client stopOverlay] Close error: " + e.getMessage());
         }
     }
 
@@ -113,13 +107,9 @@ public class Client {
         int socksr = 0;
 
         Client client1 = new Client();
-        System.out.println("2");
         SRTClient srtClient = new SRTClient();
-        System.out.println("3");
 
-        System.out.println("overlay started ");
         client1.startOverlay();
-        System.out.println("init started ");
         srtClient.initSRTClient(client1.TCPConnections, client1.inputStreams , client1.outputStreams);
 
         srtClient.createSockSRTClient(87);
